@@ -1,4 +1,4 @@
-setwd("Documents/Perso/Perso/Coursera/Data Science - John Hopkins/datasciencecoursera/ProgrammingAssignment3/")
+#setwd("Documents/Perso/Perso/Coursera/Data Science - John Hopkins/datasciencecoursera/ProgrammingAssignment3/")
 
 best <- function(state, outcome) {
   # read csv file
