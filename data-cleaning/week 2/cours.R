@@ -1,3 +1,4 @@
+## Read from MySQL
 library(RMySQL)
 
 uscs <- dbConnect(MySQL(), user = "genome", host = "genome-mysql.cse.ucsc.edu")
@@ -22,3 +23,20 @@ affyMisSmall <- fetch(query, n=10)
 dbClearResult(query)
 
 dbDisconnect(hg19)
+
+## Web scrapping
+con = url("http://scholar.google.com/citations?user=HI-I6C0AAAAJ&hl=en")
+htmlCode = readLines(con)
+close(con)
+
+library(XML)
+url <- "http://scholar.google.com/citations?user=HI-I6C0AAAAJ&hl=en"
+html <- htmlTreeParse(url, useInternalNodes = TRUE)
+xpathSApply(html, "//title", xmlValue)
+xpathSApply(html, "////td[@id='col-citedby']", xmlValue)
+
+library(httr)
+html <- GET(url)
+content <- content(html, as="text")
+parsedHtml <- htmlParse(content, asText = TRUE)
+xpathSApply(parsedHtml, "//title", xmlValue)
