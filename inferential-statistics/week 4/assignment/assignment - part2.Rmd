@@ -1,0 +1,197 @@
+---
+title: "Program_assignment2 - Part 1"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(dplyr)
+library(ggplot2)
+library(datasets)
+```
+
+
+## Overview
+
+In this study we will test if three dose levels of vitamin C by two delivery methods have effect on odontoblasts (cells responsible for tooth growth).
+
+To do that we use the `ToothGrowth` R dataset in the package `datasets`. In the dataset we have data for 60 guinea pigs and each one received a treatment of vitamin C to measure tooth length according to his treatment.
+
+## Data Summary
+
+```{r pressure, echo=FALSE}
+data("ToothGrowth")
+```
+
+```{r basic-stat, echo=TRUE}
+ToothGrowth %>%
+  head(5)
+
+ToothGrowth %>%
+  group_by(supp, dose) %>%
+  summarise(n = n()) %>%
+  as.data.frame()
+```
+
+```{r nrow-ncol, echo=FALSE}
+nb_rows <- nrow(ToothGrowth)
+nb_cols <- ncol(ToothGrowth)
+col_names <- colnames(ToothGrowth)
+```
+
+So in the dataset we have `r nb_rows` rows and `r nb_cols` columns. The first column is `r col_names[1]` that reprensents the tooth length, the second one is `r col_names[2]` and represents the supplement, that is the delivery method of vitamin C (`VC` is for ascorbic acid and `OJ` for orange juice). The last column `r col_names[3]` is the dose of vitamin C in milligrams/day. The dose can be equal to 0.5, 1 or 2.
+
+The experimental design is balanced: there is 6 different treatments (combination of dose and delivery method) and each treatment is delivered to 10 pigs.
+
+## Exploratory Analysis
+
+(The code to display the three next boxplots is in the appendix part)
+
+```{r boxplot-1, echo=FALSE, fig.height=2, fig.width=6}
+ToothGrowth %>%
+  ggplot(aes(x = supp, y = len)) +
+  geom_boxplot(aes(fill = supp)) +
+  ggtitle("Tooth Lenght according to Supplement") +
+  ylab("tooth length") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+This first boxplot, show difference between OJ and VC methods. The range of values are [8.2 ; 30.9] and [4.2 ; 33.9] respectively. It shows that variance are not the same if you change the delivery method.
+
+```{r boxplot-2, echo=FALSE, fig.height=2, fig.width=6}
+ToothGrowth %>%
+  ggplot(aes(x = factor(dose), y = len)) +
+  geom_boxplot(aes(fill = factor(dose))) +
+  ggtitle("Tooth Lenght according to Dose") +
+  ylab("tooth length") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+Similarly, with this second boxplot, we see an increase of averages for the 0.5, 1.0, & 2.0 equal to 10.61, 19.73, 26.10 respectively And we also notice a increasing range levels according to dose level. The variance is also increasing.
+
+```{r boxplot-3, echo=FALSE, fig.height=2, fig.width=6}
+ToothGrowth %>%
+  ggplot(aes(x = supp)) +
+  geom_boxplot(aes(y = len, fill = supp)) +
+  facet_wrap(~ dose) +
+  ggtitle("Tooth Lenght according to Dosage & Supplement") +
+  ylab("tooth length") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+In summation, we observe that dose level have a more important impact on teeth growth, but the last graphic show that for a dose of 2 the delivery method don't seem to affect the result of length tooth. To test this theory, hypothesis tests will be conducted in next section.
+
+## Hypothesis tests
+
+We will make some Student tests to determine if dose level and delivery method have effects on tooth growth. The result of each test is summary in one sentence after the test and the conclusion is drawing in the last section.
+
+```{r length-vs-supp, echo=TRUE}
+test_len.vs.supp <- t.test(len ~ supp, paired = FALSE, var.equal = FALSE, data = ToothGrowth)
+print(paste("t-statistic=", test_len.vs.supp$statistic))
+print(paste("p-value=", test_len.vs.supp$p.value))
+```
+**Fail to reject the null hypothesis: supplement delivery type have no effect on tooth growth.**
+
+```{r filter-according-to-dose, echo=TRUE}
+dose12 <- ToothGrowth %>%
+  filter(dose %in% c(0.5, 1.0))
+dose13 <- ToothGrowth %>%
+  filter(dose %in% c(0.5, 2.0))
+dose23 <- ToothGrowth %>%
+  filter(dose %in% c(1.0, 2.0))
+```
+
+```{r length-vs-dose12, echo=TRUE}
+test_len.vs.dose12 <- t.test(len ~ dose, paired = FALSE, var.equal = FALSE, data = dose12)
+print(paste("t-statistic=", test_len.vs.dose12$statistic))
+print(paste("p-value=", test_len.vs.dose12$p.value))
+```
+
+**Reject the null hypothesis: dose level is correlated to tooth growth (restricted to dose level of 0.5 or 1).**
+
+```{r length-vs-dose13, echo=TRUE}
+test_len.vs.dose13 <- t.test(len ~ dose, paired = FALSE, var.equal = FALSE, data = dose13)
+print(paste("t-statistic=", test_len.vs.dose13$statistic))
+print(paste("p-value=", test_len.vs.dose13$p.value))
+```
+
+**Reject the null hypothesis: dose level is correlated to tooth growth (restricted to dose level of 0.5 or 2).**
+
+```{r length-vs-dose23, echo=TRUE}
+test_len.vs.dose23 <- t.test(len ~ dose, paired = FALSE, var.equal = FALSE, data = dose23)
+print(paste("t-statistic=", test_len.vs.dose23$statistic))
+print(paste("p-value=", test_len.vs.dose23$p.value))
+```
+
+**Reject the null hypothesis: dose level is correlated to tooth growth (restricted to dose level of 1 or 2).**
+
+```{r subset-dose, echo=TRUE}
+dose.5 <- subset (ToothGrowth, dose == 0.5)
+dose1 <- subset (ToothGrowth, dose == 1.0)
+dose2 <- subset (ToothGrowth, dose == 2.0)
+```
+
+```{r length-vs-supp.5, echo=TRUE}
+test_len.vs.supp_with0.5 <- t.test(len ~ supp, paired = FALSE, var.equal = FALSE, data = dose.5)
+print(paste("t-statistic=", test_len.vs.supp_with0.5$statistic))
+print(paste("p-value=", test_len.vs.supp_with0.5$p.value))
+```
+
+**Reject the null: supplement type, when dosage level equal to 0.5, is correlated to tooth growth.**
+
+```{r length-vs-supp1, echo=TRUE}
+test_len.vs.supp_with1 <- t.test(len ~ supp, paired = FALSE, var.equal = FALSE, data = dose1)
+print(paste("t-statistic=", test_len.vs.supp_with1$statistic))
+print(paste("p-value=", test_len.vs.supp_with1$p.value))
+```
+
+**Reject the null: supplement type, when dosage level equal to 1, is correlated to tooth growth.**
+
+```{r length-vs-supp2ose, echo=TRUE}
+test_len.vs.supp_with2 <- t.test(len ~ supp, paired = FALSE, var.equal = FALSE, data = dose2)
+print(paste("t-statistic=", test_len.vs.supp_with2$statistic))
+print(paste("p-value=", test_len.vs.supp_with2$p.value))
+```
+
+**Fail to reject the null hypothesis: supplement type, when dosage level equal to 2, is not correlated to tooth growth.**
+
+## Conclusion
+
+With the following hpothesis:
+
+* The 60 guinea pigs observed were chosen at random and represent a population 
+* The supplement types and dosage levels were distributed equally and within a controlled environment
+
+Initially, our exploratory data analysis graphically shows that delivery method was not a significant factor in tooth growth.
+Finally, the first assumption was proven partially false by hypothesis tests. The combined supplement method and dose levels of 0.5 and 1 are significant. However, at the supplement method and dose level of 2, it is not. Supplement delivery method at the 0.5 and 1 dose levels factors significantly impacts tooth growth, while at higher level, it does not.
+Regarding only dose levels, the exploratory data analysis and hypothesis tests concluded that dose levels are a significant factor in tooth growth: the more dose we provide, the higher growth teeth are.
+
+
+## Appendix
+
+```
+ToothGrowth %>%
+  ggplot(aes(x = supp, y = len)) +
+  geom_boxplot(aes(fill = supp)) +
+  ggtitle("Tooth Lenght according to Supplement") +
+  ylab("tooth length") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ToothGrowth %>%
+  ggplot(aes(x = factor(dose), y = len)) +
+  geom_boxplot(aes(fill = factor(dose))) +
+  ggtitle("Tooth Lenght according to Dose") +
+  ylab("tooth length") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ToothGrowth %>%
+  ggplot(aes(x = supp)) +
+  geom_boxplot(aes(y = len, fill = supp)) +
+  facet_wrap(~ dose) +
+  ggtitle("Tooth Lenght according to Dosage & Supplement") +
+  ylab("tooth length") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
