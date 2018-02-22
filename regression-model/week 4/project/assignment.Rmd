@@ -1,0 +1,140 @@
+---
+title: "Regression Models Project"
+author: "Antoine Mertz"
+date: '2018-02-07'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+```
+
+# Synopsis
+
+Motor Trend, a magazine about the automobile industry is interested in the following two questions:
+
+* “Is an automatic or manual transmission better for MPG”
+* "Quantify the MPG difference between automatic and manual transmissions"
+
+Looking at the `mtcars` dataset we will try to answer these two questions. For more information on this dataset, we can have a look on the help and have a description typing `?mtcars`.
+
+# Data Exploration
+
+```{r load, results='hide'}
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2, warn.conflicts = FALSE)
+data("mtcars")
+```
+
+First we need to transform a bit the data, changing the type of some variables:
+
+```{r load-data}
+mtcars <- mtcars %>%
+  mutate(vs = factor(vs)) %>%
+  mutate(gear = factor(gear)) %>%
+  mutate(carb = factor(carb)) %>%
+  mutate(am = factor(am, labels = c("auto", "manual")))
+```
+
+A brief summary of the data can be found in appendix using `str`. Regarding effect of transmission type on MPG, we can first make a boxplot (see the figure in appendix) .
+
+The boxplot seems to show that manual car provides more MPG than automatic ones.
+
+# Student test
+
+To test this sentence, a Student test can be performed. To do that, we assume that density is normal in each groups (with same standard deviation), that is not really true regarding the plot in Appendix.
+
+```{r subset-data}
+t_test <- t.test(mpg ~ am, data=mtcars)
+t_test$p.value
+```
+
+p-value is under 0.05 that rejects the null hypothesis: the transmission type has significant impact on MPG. To quantify this difference we can perform regression analyse.
+
+# Regression analyse
+
+In the first model, all variables are included as predictors of MPG to see how it performs
+
+```{r complete-model}
+complete_model <- lm(mpg ~ ., data=mtcars)
+summary(complete_model)$coef
+```
+
+According to the results, a lot of variables are not significant so we use `step()` function to use AIC criteria forward and backward and with a fix `k` with the help of the `step()` documentation.
+
+```{r feature-selection, results=FALSE}
+best_model <- step(complete_model, k=log(nrow(mtcars)))
+```
+
+```{r best-model}
+summary(best_model)$call
+summary(best_model)$coef
+print(paste("Adjusted R-Squared =", summary(best_model)$adj.r.squared))
+```
+
+The adjusted R-squared of this "best model" is 0.8336, so we tend to explain 83.36% of the MPG variance that is pretty good and all the variables selected are significant. We can rely on this model. And according to it, with `wt`, `qsec` staying constant, manual transmission cars get an average of 2.94 more MPG than with automatic ones. So we can answer the first question: automatic is better for MPG (we go further with automatic cars with the same quantity of gas that with manual cars). A residuals analysis is perform in Appendix section to see how the model perform and if hypothesis of linear regression are not violated.
+
+To quantify this difference we can fit a model with only transmission variable.
+
+```{r quantify-difference}
+quantify_model <- lm(mpg ~ am, data = mtcars)
+summary(quantify_model)$coef
+print(paste("Adjusted R-Squared =", summary(quantify_model)$adj.r.squared))
+```
+It shows that a automatic cars have an average of 17.147 mpg, and manual ones increase MPG by 7.245. But, this model has an adjusted R-squared of 0.3385, which means the model can only explain about 33.85% of the variance of the MPG, that is not really enough to be consider as a good model. So other variables are important like we demonstrated with the "best model".
+
+# Conclusion
+
+With this study, we conclude that manual cars have better performance in term of MPG because you can go in average 7.245 miles further with the same number of gas gallon than with automative cars. We prove it using a student test that shows that there is a statical difference between auto and manual transmission, and then regression analyses confirm this difference and quantify it at 7.245 MPG. We confirm our first assumption from the boxplot after data exploration. So we answer the questions of interest for Motor Trend magazine.
+
+# Appendix
+
+## Exploratory analysis
+
+```{r mtcars-str}
+str(mtcars)
+```
+
+```{r boxplot, fig.cap = "Boxplot MPG vs AM", fig.width=10, fig.height=4}
+ggplot(mtcars) +
+  geom_boxplot(aes(x=am, y=mpg, fill=am)) +
+  ggtitle("Miles per gallon according to transmission type") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r densities, fig.cap = "Density of MPG vs AM", fig.width=10, fig.height=4}
+ggplot(mtcars, aes(mpg)) +
+  geom_density(aes(fill="both"), alpha=0.4) +
+  geom_density(aes(fill=am), alpha=0.4) +
+  ggtitle("MPG density according to automative type") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Residuals analysis
+
+```{r residuals-plot, fig.cap = "Residuals Analysis", fig.width=10, fig.height=4}
+residuals <- data.frame(mpg = mtcars$mpg, error = resid(best_model))
+ggplot(residuals, aes(x=mpg, y=error)) +
+  geom_point() +
+  xlab("MPG") +
+  ylab("Residuals") +
+  ggtitle("Residuals plot against real values") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r qq-plot, fig.cap = "Q-Q plot", fig.width=10, fig.height=4}
+ggplot(residuals, aes(sample = error)) +
+  stat_qq() +
+  xlab("theoritical") +
+  ylab("sample") +
+  ggtitle("MPG density according to automative type") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+Based on these two residuals plots, we can say that:
+
+* The residuals doesn’t show any pattern that seems to confirm that observations are independant.
+
+* Q-Q plot shows that errors have likely a normal distribution so that the data fit to the model and linear regression assumptions are not broken.
