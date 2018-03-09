@@ -1,0 +1,216 @@
+---
+title: "Practical MAchine Learning Assignment"
+author: "Antoine Mertz"
+date: "3/8/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+We load the libraries we will need:
+
+```{r load-libraries}
+library(dplyr)
+library(caret)
+library(corrplot)
+library(tictoc)
+```
+
+# Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+The goal of the project is to predict the manner in which they did the exercise. This is the `classe` variable in the data set.
+
+# Data preprocessing
+
+First, we load the train and test data
+
+```{r load-data}
+train <- read.csv("~/Documents/perso/Perso/Coursera/Data Science - John Hopkins/datasciencecoursera/practical-machine-learning/project/pml-training.csv")
+test <- read.csv("~/Documents/perso/Perso/Coursera/Data Science - John Hopkins/datasciencecoursera/practical-machine-learning/project/pml-testing.csv")
+```
+
+We can have a look on the data (there is too many columns, and because this is not the goal of the project, we can't display the complete header and the structure of the data):
+
+```{r str-data, echo=TRUE}
+str(train, list.len=15)
+```
+
+Then we split the train data in two data sets: one will be used for training and the other one will be used to validate the model with data unseen during training and with this second one we will be able to estimate the error out-of-sample (and so estimate the error on test data submitted on Coursera).
+
+```{r split-data}
+set.seed(123)
+inTrain  <- createDataPartition(train$classe, p=0.7, list=FALSE)
+validate <- train[-inTrain, ]
+train <- train[inTrain, ]
+```
+
+We have now three data sets: training, validating and testing:
+
+```{r dim-data}
+print(dim(train))
+print(dim(validate))
+print(dim(test))
+```
+
+Then we treat the data to have a cleaner data set removing variables with near zero variance and then with a ratio of missing values higher than 30%. We do this on the train data to have a non bias estimator on the validate and test data. (After checking, if all variables removed with a `NA` ratio higher than 30%, have at least 97.8% of `NA` so we can clearly remove these variables without question or doubt).
+
+```{r data-treatment}
+# Zero variance variables
+NZV <- nearZeroVar(train)
+train <- train[, -NZV]
+validate <- validate[, -NZV]
+test <- test[, -NZV]
+
+# Variable with too many missing values
+AllNA <- sapply(train, function(x) mean(is.na(x))) > 0.3
+train <- train[, AllNA == FALSE]
+validate <- validate[, AllNA == FALSE]
+test <- test[, AllNA == FALSE]
+```
+
+```{r dim-data-after-treatment}
+print(dim(train))
+print(dim(validate))
+print(dim(test))
+```
+
+Then we removed "`id`" variables (not usefull for the model like name for example).
+
+```{r rm-id-variable}
+train <- train %>%
+  select(-c(X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp))
+
+test <- test %>%
+  select(-c(X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp))
+
+validate <- validate %>%
+  select(-c(X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp))
+```
+
+# Exploratory Data Analysis (EDA)
+
+To not have a too long report and because it is not the goal of the assignment, we will have a limited EDA. We can imagine looking boxplot for each variable, perform ANOVA, etc... But we will just have a look on correlation.
+
+```{r corr-plot, fig.height=10, fig.width=10}
+corMatrix <- cor(subset(train, select = -c(classe)))
+corrplot(corMatrix, order = "alphabet", method = "color", type = "lower", tl.cex = 0.8, tl.col = rgb(0, 0, 0))
+```
+
+Some variables are highly correlated (positive or negative). But to test if they have an important impact on the model we can test to perform PCA before modelization (as a `preProcess` argument in the `train` function of `caret`). But we will do that if performance is not well on validate data (compare to what we obtain on train set).
+
+# `class` variable prediction
+
+For training the data, we use cross-validation on the training data. We use 5 cross-validation folders that and each folder will have almost 2750 observations that is I think sufficient to avoid over fitting on training data and we will validate the model on validate data.
+
+For a first try, we use random forest, then we will try SVM as classifier, and finally we will test GBM classifier.
+
+## Random Forest
+
+```{r training-rf}
+set.seed(1234)
+controlModel <- trainControl(method="cv", number=5, verboseIter=FALSE)
+
+# Train
+tic("Training Random Forest... ")
+rf <- train(classe ~ ., data = train, method = "rf", trControl=controlModel)
+toc()
+# Performance on the training data
+train.rf <- predict(rf, subset(train, select = -c(classe)))
+confusionMatrix(train.rf, train$classe)
+```
+
+Accuracy is 100% so maybe we have over fitted on the training set. But seems that correlated variables are not a huge problem for what we are trying to classify. Let have a look on the validate set for verifying that we don't over fitting.
+
+```{r validation-rf}
+# Validation
+validate.rf <- predict(rf, subset(validate, select = -c(classe)))
+confusionMatrix(validate.rf, validate$classe)
+```
+
+Again accuracy is high (higher than 99%). Performance is not degrated so we can consider that we don't over fit on the train data. If the model over fitted on the train data, the performance on unseen data (like validate set) would be much lower than what the model produce. And performance on validate set also confirm that correlated data are not a big deal for random forest model on this problem. So we don't need to test with PCA pre-processing.
+
+Now, we can calculate our predictions for the submission with this model.
+
+```{r test-prediction-rf}
+test.rf <- predict(rf, subset(test, select = -c(problem_id)))
+```
+
+## SVM
+
+As a second model to test other things that random forest.
+
+```{r training-svm}
+set.seed(12345)
+controlModel <- trainControl(method="cv", number=5, verboseIter=FALSE)
+
+# Train
+tic("Training SVM... ")
+svm <- train(classe ~ ., data = train, method = "svmRadial", trControl=controlModel)
+toc()
+# Performance on the training data
+train.svm <- predict(svm, subset(train, select = -c(classe)))
+confusionMatrix(train.svm, train$classe)
+```
+
+Again accuracy is high (93.8%) but lower than with random forests. But training time is lower with SVM than with Random Forest so maybe for production model, a lower time of training can be interesting.
+
+```{r validation-svm}
+# Validation
+validate.svm <- predict(svm, subset(validate, select = -c(classe)))
+confusionMatrix(validate.svm, validate$classe)
+```
+
+Again, on validate set, accuracy is lower with SVM than with Random Forest. So, at this point of the report, Random Forest seems to be the better model.
+
+Now, we can calculate our predictions for the submission with this model.
+
+```{r test-prediction-svm}
+test.svm <- predict(svm, subset(test, select = -c(problem_id)))
+```
+
+## GBM
+
+As a final test we try GBM model.
+
+```{r training-gbm}
+set.seed(123456)
+controlModel <- trainControl(method = "repeatedcv", number = 5, repeats = 1)
+
+# Train
+tic("Training GBM... ")
+gbm <- train(classe ~ ., data = train, method = "gbm", trControl=controlModel, verbose = FALSE)
+toc()
+# Performance on the training data
+train.gbm <- predict(gbm, subset(train, select = -c(classe)))
+confusionMatrix(train.gbm, train$classe)
+```
+
+Accuracy on train set is higher than the one reaches by SVM model but lower than Random Forest one (that can only be equaled). GBM seems to be a great model to clasify our target. Let's see if don't over fit and estimate the out-sample error.
+
+```{r validation-gbm}
+# Validation
+validate.gbm <- predict(gbm, subset(validate, select = -c(classe)))
+confusionMatrix(validate.gbm, validate$classe)
+```
+
+Accuracy still very good. GBM is a good model for our objective and is faster to train than Random Forest.
+
+Now, we can calculate our predictions for the submission with this model.
+
+```{r test-prediction-gbm}
+test.gbm <- predict(gbm, subset(test, select = -c(problem_id)))
+```
+
+# Conclusion
+
+The accuracy of the 3 classifying methods presented above are:
+
+Random Forest : 0.9976
+SVM : 0.9324
+GBM : 0.9886
+
+Random Forest seems to be the best model we can easily build. With hyper parameter tuning and maybe other algorithms we will be able to improve accuracy. But accuracy is almost equals to 1. So this model can be sufficient. With this conclusion, Random Forest model will be applied to predict the 20 quiz results (testing dataset).
