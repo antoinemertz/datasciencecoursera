@@ -1,0 +1,49 @@
+---
+title: "Develop Data Products - Week 2 Assignment"
+author: "Antoine Mertz"
+date: "4/17/2018"
+output:
+  ioslides_presentation: default
+  slidy_presentation: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(leaflet)
+library(dplyr)
+```
+
+## My map
+
+I used to take line 14 of the Parisian metro so I represent it on my map.
+
+```{r data}
+stations_ratp <- read.csv(file = "data/positions-geographiques-des-stations-du-reseau-ratp.csv", sep = ";")
+stations_ratp <- stations_ratp %>%
+  mutate(stop_name = toupper(as.character(stop_name)))
+
+stops_14 <- c("SAINT-LAZARE", "MADELEINE", "PYRAMIDES", "CHATELET", "GARE DE LYON", "BERCY", "COUR SAINT-EMILION", "BIBLIOTHEQUE FRANCOIS MITTERRAND", "OLYMPIADES")
+
+ligne_14 <- stations_ratp %>%
+  filter(stop_name %in% stops_14) %>%
+  group_by(stop_name) %>%
+  summarise(lat = mean(stop_lat), lng = mean(stop_lon)) %>%
+  ungroup() %>%
+  mutate(stop_name = factor(stop_name, levels = stops_14, ordered = TRUE)) %>%
+  arrange(stop_name) %>%
+  as.data.frame()
+
+```
+
+```{r map, echo = FALSE, warning = FALSE, message = FALSE}
+ratp_icon <- makeIcon(iconUrl = "https://www.ratp.fr/sites/default/files/network/metro/symbole.svg",
+                      iconWidth = 20, iconHeight = 20)
+
+ligne_14 %>%
+  leaflet() %>%
+  setView(lat = mean(ligne_14$lat), lng = mean(ligne_14$lng), zoom = 11) %>%
+  addTiles() %>%
+  addProviderTiles(providers$OpenStreetMap) %>%
+  addMarkers(lat = ~lat, lng = ~lng, icon = ratp_icon, popup = ligne_14$stop_name) %>%
+  addPolylines(lat = ~lat, lng = ~lng, color = "#62259D")
+```
