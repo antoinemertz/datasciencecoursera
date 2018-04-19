@@ -14,7 +14,7 @@ data("airquality")
 
 ## My plot
 
-This plot was made the 19<sup>th</sup> of April 2018. (Find the code on next slide)
+This plot was made the 19<sup>th</sup> of April 2018. I plot the `Wind` and `Temp` variables from the `airquality` dataset (find the code on next slide)
 
 ```{r my-plot}
 data("airquality")
