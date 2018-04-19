@@ -1,0 +1,40 @@
+---
+title: "Week 3 Assignment"
+author: "Antoine Mertz"
+date: "4/19/2018"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(dplyr)
+library(plotly)
+data("airquality")
+```
+
+## My plot
+
+This plot was made the 19<sup>th</sup> of April 2018. (Find the code on next slide)
+
+```{r my-plot}
+data("airquality")
+airquality <- airquality %>%
+  mutate(index = row_number())
+
+p <- plot_ly(airquality, x = ~index, y = ~Wind, name = 'Wind', type = 'scatter', mode = 'lines') %>%
+  add_trace(y = ~Temp, name = 'Temp', mode = 'lines')
+p
+```
+
+## Code
+
+```{r my-plot-code, echo=TRUE, eval=FALSE}
+data("airquality")
+airquality <- airquality %>%
+  mutate(index = row_number())
+
+p <- plot_ly(airquality, x = ~index, y = ~Wind, name = 'Wind',
+             type = 'scatter', mode = 'lines') %>%
+  add_trace(y = ~Temp, name = 'Temp', mode = 'lines')
+p
+```
