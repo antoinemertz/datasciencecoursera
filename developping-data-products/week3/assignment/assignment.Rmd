@@ -21,8 +21,13 @@ data("airquality")
 airquality <- airquality %>%
   mutate(index = row_number())
 
+y <- list(
+  title = 'Measures'
+)
+
 p <- plot_ly(airquality, x = ~index, y = ~Wind, name = 'Wind', type = 'scatter', mode = 'lines') %>%
-  add_trace(y = ~Temp, name = 'Temp', mode = 'lines')
+  add_trace(y = ~Temp, name = 'Temp', mode = 'lines') %>%
+  layout(yaxis = y)
 p
 ```
 
@@ -33,8 +38,13 @@ data("airquality")
 airquality <- airquality %>%
   mutate(index = row_number())
 
+y <- list(
+  title = 'Measures'
+)
+
 p <- plot_ly(airquality, x = ~index, y = ~Wind, name = 'Wind',
              type = 'scatter', mode = 'lines') %>%
-  add_trace(y = ~Temp, name = 'Temp', mode = 'lines')
+  add_trace(y = ~Temp, name = 'Temp', mode = 'lines') %>%
+  layout(yaxis = y')
 p
 ```
