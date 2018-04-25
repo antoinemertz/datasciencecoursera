@@ -54,6 +54,22 @@ shinyServer(function(input, output) {
     }
   })
 
+  model_ridge <- reactive({
+    if(input$showRidge) {
+      fitControl <- trainControl(method = "none")
+      ridge_param <- data.frame(lambda = input$lambda_ridge)
+      train(mpg ~ ., data = mtcars, method = "ridge", trControl = fitControl, tuneGrid = ridge_param)
+    }
+  })
+
+  model_lasso <- reactive({
+    if(input$showLasso) {
+      fitControl <- trainControl(method = "none")
+      lasso_param <- data.frame(fraction = input$fraction_lasso)
+      train(mpg ~ ., data = mtcars, method = "lasso", trControl = fitControl, tuneGrid = lasso_param)
+    }
+  })
+
    output$plot_result <- renderPlot({
 
      predict_lm <- mtcars %>%
@@ -95,8 +111,27 @@ shinyServer(function(input, output) {
         plot_result <- plot_result +
           geom_point(aes(y = predict_svr$mpg, color = 'svr (polynomial)'))
       }
-
     }
+
+    if(input$showRidge) {
+      predict_ridge <- mtcars %>%
+        select(-c(mpg))
+
+      predict_ridge$mpg <- predict(model_ridge(), predict_ridge)
+
+      plot_result <- plot_result +
+        geom_point(aes(y = predict_ridge$mpg, color = 'ridge'))
+    }
+
+     if(input$showLasso) {
+       predict_lasso <- mtcars %>%
+         select(-c(mpg))
+
+       predict_lasso$mpg <- predict(model_lasso(), predict_lasso)
+
+       plot_result <- plot_result +
+         geom_point(aes(y = predict_lasso$mpg, color = 'lasso'))
+     }
 
      plot_result
    })
@@ -129,6 +164,24 @@ shinyServer(function(input, output) {
        mape_svr <- MAPE(prediction_svr, mtcars$mpg)
 
        result <- rbind(result, c("SVR", rmspe_svr, mape_svr))
+     }
+
+     if(input$showRidge) {
+       prediction_ridge <- predict(model_ridge(), predict_mpg)
+
+       rmspe_ridge <- RMSPE(prediction_ridge, mtcars$mpg)
+       mape_ridge <- MAPE(prediction_ridge, mtcars$mpg)
+
+       result <- rbind(result, c("Ridge Regression (ridge)", rmspe_ridge, mape_ridge))
+     }
+
+     if(input$showLasso) {
+       prediction_lasso <- predict(model_lasso(), predict_mpg)
+
+       rmspe_lasso <- RMSPE(prediction_lasso, mtcars$mpg)
+       mape_lasso <- MAPE(prediction_lasso, mtcars$mpg)
+
+       result <- rbind(result, c("Lasso Regression (lasso)", rmspe_lasso, mape_lasso))
      }
 
      if(input$rank_metric == 'RMSPE') {
