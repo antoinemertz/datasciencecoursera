@@ -15,9 +15,8 @@ shinyUI(fluidPage(
       selectInput(inputId = "svr_kernel", label = "Choose SVR kernel:", choices = c("RBF", "Polynomial", "Linear")),
       uiOutput(outputId = "svm_parameters"),
 
-      selectInput("rank_metric", label = "Choose the ranking metric", choices = c('RMSPE', 'MAPE')),
+      selectInput("rank_metric", label = "Choose the ranking metric", choices = c('RMSPE', 'MAPE'))
 
-      submitButton("Submit")
     ),
     mainPanel(
       plotOutput(outputId = "plot_result"),

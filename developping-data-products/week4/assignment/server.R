@@ -12,17 +12,17 @@ shinyServer(function(input, output) {
   output$svm_parameters <- renderUI({
     if(input$svr_kernel == "Linear") {
       tagList(
-        sliderInput("C", "Choose cost parameter C:", min = 0, max = 1, value = 0.5, step = 1e-2)
+        sliderInput("C", "Choose cost parameter C:", min = 1e-2, max = 1-1e-2, value = 0.5, step = 1e-2)
       )
       } else if(input$svr_kernel == "Polynomial") {
         tagList(
-          sliderInput("C", "Choose cost parameter C:", min = 0, max = 1, value = 0.5, step = 1e-2),
+          sliderInput("C", "Choose cost parameter C:", min = 1e-2, max = 1-1e-2, value = 0.5, step = 1e-2),
           sliderInput("degree", "Choose the degree", min = 1, max = 5, value = 2, step = 1)
         )
       } else if(input$svr_kernel == "RBF") {
         tagList(
-          sliderInput("C", "Choose cost parameter C:", min = 0, max = 1, value = 0.5, step = 1e-2),
-          sliderInput("sigma", "Choose sigma parameter:", min = 0, max = 1, value = 0.5, step = 1e-2)
+          sliderInput("C", "Choose cost parameter C:", min = 1e-2, max = 1-1e-2, value = 0.5, step = 1e-2),
+          sliderInput("sigma", "Choose sigma parameter:", min = 1e-2, max = 1-1e-2, value = 0.5, step = 1e-2)
         )
       }
   })
