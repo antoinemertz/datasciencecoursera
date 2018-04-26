@@ -33,6 +33,8 @@ I test 5 different algorithms found in `caret` package:
 
 ## App pitch (2)
 
+Code for `server.R` and `ui.R` can be found here: https://github.com/antoinemertz/datasciencecoursera/tree/master/developping-data-products/week4/assignment and the app is available at https://antoine-mertz.shinyapps.io/assignment/
+
 I let interested people look this different algorithms and the `caret` documentation for further details.
 
 On the side panel the user can tune some hyper parameters for each algorithm. To see performance of an algorithm (on the plot and on the table below the plot) just check the box of the algorithm you are interest in (`lm` is always display to compare).
