@@ -1,6 +1,6 @@
-us_blog <- readLines("data/en_US/en_US.blogs.txt")
-us_twitter <- readLines("data/en_US/en_US.twitter.txt")
-us_news <- readLines("data/en_US/en_US.news.txt")
+us_blog <- readLines("../data/us/en_US.blogs.txt")
+us_twitter <- readLines("../data/us/en_US.twitter.txt")
+us_news <- readLines("../data/us/en_US.news.txt")
 
 #q1
 file.info("data/en_US/en_US.blogs.txt")$size
