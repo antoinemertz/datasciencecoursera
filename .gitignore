@@ -38,3 +38,5 @@ rsconnect/
 #data
 StormData.csv
 .Rproj.user
+capstone-project/data/*
+!capstone-project/data/.gitignore
