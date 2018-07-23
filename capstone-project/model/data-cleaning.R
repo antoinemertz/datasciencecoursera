@@ -30,9 +30,9 @@ docs <- Corpus(VectorSource(c(twitter, blogs, news)))
 
 docs <- TextCleaning(docs)
 
-my_str <- stripWhitespace(paste(as.character(unlist(docs)), collapse = " "))
-
 load(file = '../data/clean-corpus.RData')
+
+my_str <- stripWhitespace(paste(as.character(unlist(docs)), collapse = " "))
 
 dtm <- DocumentTermMatrix(docs)
 word_freq <- dtm %>%
