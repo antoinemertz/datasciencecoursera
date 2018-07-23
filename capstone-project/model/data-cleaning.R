@@ -1,56 +1,38 @@
 library(tm)
+library(ngram)
 library(dplyr)
 library(tidytext)
 library(ggplot2)
 library(wordcloud)
+
+source('src/text_cleaning.R')
+source('src/build_ngram.R')
 
 twitter <- readLines("../data/us/en_US.twitter.txt")
 blogs <- readLines("../data/us/en_US.blogs.txt")
 news <- readLines("../data/us/en_US.news.txt")
 profanity.words <- read.csv("../data/profanity_words.csv", header = FALSE)
 
-set.seed(1234) #for reproducibility
-size.sample <- 0.05 #only taking 5% of the data.
+set.seed(1234) # for reproducibility
+size.sample <- 0.25 # only taking x% of the data.
 
 # creating samples for each dataset
-# twitter.sample <- sample(twitter, length(twitter) * size.sample)
-# blogs.sample <- sample(blogs, length(blogs) * size.sample)
-# news.sample <- sample(news, length(news) * size.sample)
-
-twitter.sample = twitter
-blogs.sample = blogs
-news.sample = news
+twitter <- sample(twitter, length(twitter) * size.sample)
+blogs <- sample(blogs, length(blogs) * size.sample)
+news <- sample(news, length(news) * size.sample)
 
 # cleaning
-twitter.sample <- iconv(twitter.sample,to = "ASCII",sub = "")
-blogs.sample <- iconv(blogs.sample,to = "ASCII",sub = "")
-news.sample <- iconv(news.sample,to = "ASCII",sub = "")
+twitter <- iconv(twitter,to = "ASCII",sub = "")
+blogs <- iconv(blogs,to = "ASCII",sub = "")
+news <- iconv(news,to = "ASCII",sub = "")
 
-docs <- Corpus(VectorSource(c(twitter.sample, blogs.sample, news.sample)))
+docs <- Corpus(VectorSource(c(twitter, blogs, news)))
 
-# Remove hashtags
-removeHashtags <- function(x) {
-  gsub("#[[:alnum:]]*", "", x)
-}
-docs <- tm_map(docs, removeHashtags)
-# Convertir le texte en minuscule
-docs <- tm_map(docs, content_transformer(tolower))
-# Supprimer votre propre liste de mots non desires
-docs <- tm_map(docs, removeWords, profanity.words$V1)
-# Supprimer les nombres
-docs <- tm_map(docs, removeNumbers)
-# Supprimer les mots vides anglais
-docs <- tm_map(docs, removeWords, stopwords("english"))
-# Supprimer les ponctuations
-docs <- tm_map(docs, removePunctuation)
-# Supprimer les espaces vides supplementaires
-docs <- tm_map(docs, stripWhitespace)
-# Supprimer les URLs
-# remove urls
-removeURL <- function(x) {
-  gsub(pattern = "http[[:alnum:]]*", replacement = "", x = x)
-}
-docs <- tm_map(docs, removeURL)
+docs <- TextCleaning(docs)
+
+my_str <- stripWhitespace(paste(as.character(unlist(docs)), collapse = " "))
+
+load(file = '../data/clean-corpus.RData')
 
 dtm <- DocumentTermMatrix(docs)
 word_freq <- dtm %>%
@@ -76,10 +58,13 @@ wordcloud(words = word_freq$term, freq = word_freq$n, min.freq = 1,
           max.words = 200, random.order = FALSE, rot.per = 0.35, 
           colors = brewer.pal(8, "Dark2"))
 
-## n-gram models
-BigramTokenizer <- function(x) {
-  unlist(lapply(ngrams(words(x), 2), paste, collapse = " "), use.names = FALSE)
-}
+## n-gram creation
 
-tdm_bigram <- TermDocumentMatrix(docs, control = list(tokenize = BigramTokenizer))
-inspect(removeSparseTerms(tdm_bigram[, 1:10], 0.1))
+BiGram(my_str, '../data/2-gram.csv')
+
+TriGram(my_str, '../data/3-gram.csv')
+
+FourGram(my_str, '../data/4-gram.csv')
+
+FiveGram(my_str, '../data/5-gram.csv')
+
