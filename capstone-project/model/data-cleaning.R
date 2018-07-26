@@ -14,7 +14,7 @@ news <- readLines("../data/us/en_US.news.txt")
 profanity.words <- read.csv("../data/profanity_words.csv", header = FALSE)
 
 set.seed(1234) # for reproducibility
-size.sample <- 0.25 # only taking x% of the data.
+size.sample <- 0.05 # only taking x% of the data.
 
 # creating samples for each dataset
 twitter <- sample(twitter, length(twitter) * size.sample)
@@ -64,7 +64,7 @@ BiGram(my_str, '../data/2-gram.csv')
 
 TriGram(my_str, '../data/3-gram.csv')
 
-FourGram(my_str, '../data/4-gram.csv')
+# FourGram(my_str, '../data/4-gram.csv')
 
-FiveGram(my_str, '../data/5-gram.csv')
+# FiveGram(my_str, '../data/5-gram.csv')
 
