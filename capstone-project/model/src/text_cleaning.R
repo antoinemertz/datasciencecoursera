@@ -1,4 +1,6 @@
-TextCleaning <- function(docs) {
+library(tm)
+
+CorpusCleaning <- function(docs) {
   # Remove hashtags
   removeHashtags <- function(x) {
     gsub("#[[:alnum:]]*", "", x)
@@ -11,7 +13,7 @@ TextCleaning <- function(docs) {
   # Remove numbers
   docs <- tm_map(docs, removeNumbers)
   # Remove english stop words
-  docs <- tm_map(docs, removeWords, stopwords("english"))
+  # docs <- tm_map(docs, removeWords, stopwords("english"))
   # Remove punctuation
   docs <- tm_map(docs, removePunctuation)
   # Remove useless white spaces
@@ -28,4 +30,40 @@ TextCleaning <- function(docs) {
   # Remove punctuation
   docs <- tm_map(docs, removePunctuation)
   return(docs)
+}
+
+TextCleaning <- function(string, profanity.words = read.csv("../data/profanity_words.csv", header = FALSE)) {
+  
+  string <- iconv(string,to = "ASCII",sub = "")
+  
+  # Remove hashtags
+  removeHashtags <- function(x) {
+    gsub("#[[:alnum:]]*", "", x)
+  }
+  string <- removeHashtags(string)
+  # Convert upper letters to lower
+  string <- tolower(string)
+  # Remove profanity words
+  string <- removeWords(string, profanity.words$V1)
+  # Remove numbers
+  string <- removeNumbers(string)
+  # Remove english stop words
+  # docs <- tm_map(docs, removeWords, stopwords("english"))
+  # Remove punctuation
+  string <- removePunctuation(string)
+  # Remove useless white spaces
+  string <- stripWhitespace(string)
+  # Remove URLs
+  removeURL <- function(x) {
+    gsub(pattern = "http[[:alnum:]]*", replacement = "", x = x)
+  }
+  string <- removeURL(string)
+  
+  string <- gsub(x = string, pattern = "\b", replacement = " ")
+  string <- gsub(x = string, pattern = "\020", replacement = " ")
+  string <- gsub(x = string, pattern = "\035", replacement = " ")
+  string <- gsub(x = string, pattern = "\032", replacement = " ")
+  string <- gsub(x = string, pattern = "\037", replacement = " ")
+  
+  return(string)
 }
