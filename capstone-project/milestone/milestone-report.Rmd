@@ -1,0 +1,302 @@
+---
+title: "Coursera Data Science Capstone - Milestone Report"
+author: "Antoine Mertz"
+date: "8/2/2018"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message=FALSE)
+knitr::opts_chunk$set(warning=FALSE)
+```
+
+```{r source-files, echo = FALSE}
+source("../model/src/text_cleaning.R")
+source("../model/src/build_ngram.R")
+profanity.words <- read.csv("../data/profanity_words.csv", header = FALSE)
+```
+
+Loading needed libraries:
+
+```{r load-libraries}
+library(knitr)
+library(RCurl)
+library(tm)
+library(ngram)
+library(dplyr)
+library(tidytext)
+library(ggplot2)
+library(wordcloud)
+```
+
+## Introduction
+
+The end goal of the capstone project is to build a next word predictive algorithm.
+
+Three sources of data, namely blogs, news and twitter feeds, were provided for this project in 4 different languages. We will only use the English texts for this project.
+
+In this report we start looking the data and give some insights into the data as well as next steps for the project.
+
+## Getting the data
+
+Data are availbale at: <https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip>
+
+3 data sources were provided: blogs, news and twitter feeds.
+
+```{r get-data}
+url <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+if(!file.exists( "../data/Coursera-SwiftKey.zip")){
+  download.file(data_url, "../data/SwiftKey_data.zip", method = "libcurl")
+
+# extract zip files
+unzip("SwiftKey_data.zip")
+}
+
+twitter <- readLines("../data/us/en_US.twitter.txt")
+blogs <- readLines("../data/us/en_US.blogs.txt")
+news <- readLines("../data/us/en_US.news.txt")
+```
+
+## Data Description
+
+```{r describe-data}
+# Get file size and convert to MBs
+twitter_size <- file.size("../data/us/en_US.twitter.txt") / 1024^2
+blogs_size <- file.size("../data/us/en_US.blogs.txt") / 1024^2
+news_size <- file.size("../data/us/en_US.news.txt") / 1024^2
+
+twitter_words <- unlist(strsplit(twitter, split = " "))
+blogs_words <- unlist(strsplit(blogs, split = " "))
+news_words <- unlist(strsplit(news, split = " "))
+
+summary_table <- data.frame(filename = c("twitter", "blogs", "news"),
+                            `file size (MB)` = c(twitter_size, blogs_size, news_size),
+                            `Line Count` = c(length(twitter), length(blogs), length(news)),
+                            `Word Count` = c(length(twitter_words), length(blogs_words), length(news_words)))
+
+# release memory 
+kable(summary_table, align="c", digits=0)
+```
+
+## Exploratory Data Analysis
+
+### Data Cleaning
+
+First, I sample a small subset of each data source to work with because full data set is too big to process. I choose to take 5% of each data source. Then I combine the three texts into a corpus (see `tm` package. I do some cleaning before create corpus: I encode character in `ASCII` international standard (remove non-English characters).
+
+```{r create-corpus}
+set.seed(1234) # for reproducibility
+size.sample <- 0.05 # only taking x% of the data.
+
+# creating samples for each dataset
+twitter <- sample(twitter, length(twitter) * size.sample)
+blogs <- sample(blogs, length(blogs) * size.sample)
+news <- sample(news, length(news) * size.sample)
+
+# cleaning
+twitter <- iconv(twitter,to = "ASCII",sub = "")
+blogs <- iconv(blogs,to = "ASCII",sub = "")
+news <- iconv(news,to = "ASCII",sub = "")
+
+docs <- Corpus(VectorSource(c(twitter, blogs, news)))
+```
+
+Then I clean my corpus:
+
+- remove #sentences (mostly in tweets)
+- convert all letters to lower case
+- remove profanity words (can be found there <https://github.com/RobertJGabriel/Google-profanity-words/blob/master/list.txt>)
+- remove numbers
+- remove English stop words
+- remove punctuation
+- remove unnecessary white spaces
+- remove URLs
+
+Please find code in [Appendix].
+
+```{r clean-corpus}
+docs_without_stop_words <- CorpusCleaning(docs, stop_words = TRUE)
+docs_with_stop_words <- CorpusCleaning(docs, stop_words = FALSE)
+```
+
+### First insigths and Graphic
+
+I choose to present two word clouds: one keeping English stop words and an other one removing them. We expect that English stop words will be the most present words in the data set. But to learn link between words, they are not really usefull so to build n-grams in next section, I choose to exclude them from the study.
+
+```{r word-cloud-with}
+dtm <- DocumentTermMatrix(docs_with_stop_words)
+word_freq <- dtm %>%
+  tidy() %>%
+  select(-c(document)) %>%
+  group_by(term) %>%
+  summarize(n = sum(count)) %>%
+  ungroup() %>%
+  arrange(desc(n)) %>%
+  filter(row_number() < 501) %>%
+  as.data.frame()
+
+wordcloud(words = word_freq$term, freq = word_freq$n, min.freq = 1,
+          max.words = 200, random.order = FALSE, rot.per = 0.35, 
+          colors = brewer.pal(8, "Dark2"))
+```
+
+```{r word-cloud-without}
+dtm <- DocumentTermMatrix(docs_without_stop_words)
+word_freq <- dtm %>%
+  tidy() %>%
+  select(-c(document)) %>%
+  group_by(term) %>%
+  summarize(n = sum(count)) %>%
+  ungroup() %>%
+  arrange(desc(n)) %>%
+  filter(row_number() < 501) %>%
+  as.data.frame()
+
+wordcloud(words = word_freq$term, freq = word_freq$n, min.freq = 1,
+          max.words = 200, random.order = FALSE, rot.per = 0.35, 
+          colors = brewer.pal(8, "Dark2"))
+```
+
+As expected, English stop words are the most frequent ones. But we also see that there is a lot of verbs like `said`, `can`, `get`, etc... 
+
+### n-grams
+
+After looking top frequent words in the data set, I look most frequent 2-grams and 3-grams to have an idea of words associations. To build n-grams you can find code in [Appendix].
+
+```{r load-ngrams, echo = FALSE}
+bigram <- read.csv("../data/2-gram.csv")
+trigram <- read.csv("../data/3-gram.csv")
+```
+
+This is how it's look like for bi-grams (and for tri-grams there is just a column named `second_word`):
+
+```{r head-bigram}
+bigram %>%
+  head() %>%
+  kable(align="c", digits=5)
+```
+
+Once I obtained this table, I display the most frequent 2-grams and 3-grams in the Corpus.
+
+```{r display-frequent-bigrams, fig.height=4, fig.width=8}
+top_bigram <- bigram %>%
+  arrange(desc(freq)) %>%
+  filter(row_number() < 15) %>%
+  mutate(bigram = paste(first_word, next_word)) %>%
+  select(bigram, freq)
+
+top_bigram %>%
+  mutate(bigram = factor(bigram, level = top_bigram$bigram[order(top_bigram$freq, decreasing = TRUE)])) %>%
+  ggplot(aes(x = bigram)) +
+  geom_bar(aes(weight = freq)) +
+  ggtitle("Most Frequent Bi-Grams") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+```{r display-frequent-trigrams, fig.height=4, fig.width=8}
+top_trigram <- trigram %>%
+  arrange(desc(freq)) %>%
+  filter(row_number() < 15) %>%
+  mutate(trigram = paste(first_word, second_word, next_word)) %>%
+  select(trigram, freq)
+
+top_trigram %>%
+  mutate(trigram = factor(trigram, level = top_trigram$trigram[order(top_trigram$freq, decreasing = TRUE)])) %>%
+  ggplot(aes(x = trigram)) +
+  geom_bar(aes(weight = freq)) +
+  ggtitle("Most Frequent Tri-Grams") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+ 
+ Most frequent tri-grams are interesting and often related to special days or events like `new year`, `mother day`, `cinco de mayo`.
+
+## Next steps
+
+So now I am used with the data, I will start develop my next word predictive model. I have started looking on Internet what people used to do that, and I found that mostly people use n-grams models. But this is more data analysis than machine learning model so I choose to start looking how to use Deep Learning models. I try to take example of text generation (predict next characters that you can found there <https://github.com/jjallaire/deep-learning-with-r-notebooks/blob/master/notebooks/8.1-text-generation-with-lstm.Rmd>) and apply it to predict next words in Keras. It will maybe be less efficient than ngrams based model but I want to learn about Deep Learning and I find this example interesting to start.
+
+## Appendix
+
+```{r text-cleaning}
+profanity.words <- read.csv("../data/profanity_words.csv", header = FALSE)
+
+CorpusCleaning <- function(docs, stop_words = TRUE) {
+  ###
+  # Take a corpus in input and output a clean corpus
+  ###
+  
+  # Remove hashtags
+  removeHashtags <- function(x) {
+    gsub("#[[:alnum:]]*", "", x)
+  }
+  docs <- tm_map(docs, removeHashtags)
+  # Convert upper letters to lower
+  docs <- tm_map(docs, content_transformer(tolower))
+  # Remove profanity words
+  docs <- tm_map(docs, removeWords, profanity.words$V1)
+  # Remove numbers
+  docs <- tm_map(docs, removeNumbers)
+  # Remove english stop words
+  if (stop_words) {
+    docs <- tm_map(docs, removeWords, stopwords("english"))
+  }
+  # Remove punctuation
+  docs <- tm_map(docs, removePunctuation)
+  # Remove useless white spaces
+  docs <- tm_map(docs, stripWhitespace)
+  # Remove URLs
+  removeURL <- function(x) {
+    gsub(pattern = "http[[:alnum:]]*", replacement = "", x = x)
+  }
+  docs <- tm_map(docs, removeURL)
+  # Remove useless white spaces
+  docs <- tm_map(docs, stripWhitespace)
+  # Remove numbers
+  docs <- tm_map(docs, removeNumbers)
+  # Remove punctuation
+  docs <- tm_map(docs, removePunctuation)
+  return(docs)
+}
+```
+
+```{r build-ngrams, eval = FALSE}
+my_str <- stripWhitespace(paste(as.character(unlist(docs)), collapse = " ")) # put corpus text data in one big string
+
+BiGram <- function(string) {
+  ###
+  # build a bi-gram from a string
+  ###
+  
+  ng2 <- get.phrasetable(ngram(string, n = 2)) # get the text from the ngram, see ngram package
+  n_grams <- strsplit(ng2$ngrams, " ") # split the two words of 2-grams
+  # then build a data frame with the first word | the second word
+  ng2 <- ng2 %>%
+    mutate(first_word = sapply(n_grams, function(x) {x[1]})) %>%
+    mutate(next_word = sapply(n_grams, function(x) {x[-1]})) %>%
+    select(-c(ngrams))
+  return(ng2)
+}
+
+TriGram <- function(string) {
+  ###
+  # build a tri-gram from a string
+  ###
+  
+  ng3 <- get.phrasetable(ngram(string, n = 3)) # get the text from the ngram, see ngram package
+  n_grams <- strsplit(ng3$ngrams, " ") # split the three words of 3-grams
+  # then build a data frame with the first word | the second word | the third word
+  ng3 <- ng3 %>%
+    mutate(first_word = sapply(n_grams, function(x) {x[1]})) %>%
+    mutate(second_word = sapply(n_grams, function(x) {x[2]})) %>%
+    mutate(next_word = sapply(n_grams, function(x) {x[3]})) %>%
+    select(-c(ngrams))
+  return(ng3)
+}
+
+bigram <- BiGram(my_str)
+trigram <- TriGram(my_str)
+```

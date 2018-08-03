@@ -2,7 +2,7 @@ source("src/build_sequences.R")
 source("src/word_vectorization.R")
 library(keras)
 
-# install_keras()
+install_keras()
 
 ModelTrain <- function(train_file = "output.txt", output_file = "output_vectors.bin", maxlen = 5, steps = 3,
                        word_vectors_size = 100, min_occurence = 1) {
@@ -43,5 +43,5 @@ ModelTrain <- function(train_file = "output.txt", output_file = "output_vectors.
   cat("Fit model...", "\n")
   model %>% fit(x, y, batch_size = 128, epochs = 1, class_weight = class_weight)
   
-  return(list(model = model, words_vectors = words_vectors, x = x, y = y, unique_words = unique_words, class_weight))
+  return(list(model = model, words_vectors = words_vectors, x = x, y = y, unique_words = unique_words, class_weight = class_weight))
 }
