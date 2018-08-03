@@ -9,7 +9,7 @@ WordVectorization <- function(train_file, output_file, word_vectors_size, min_oc
   
   x <- array(0L, dim = c(nrow(sentences), maxlen, word_vectors_size))
   y <- array(0L, dim = c(nrow(sentences), nrow(words_vectors)))
-  
+  class_weight <- list()
   pb <- txtProgressBar(min = 1, max = nrow(sentences), style = 3)
   
   for (i in 1:nrow(sentences)) {
@@ -20,5 +20,9 @@ WordVectorization <- function(train_file, output_file, word_vectors_size, min_oc
     setTxtProgressBar(pb, i)
   }
   
-  return(list(x = x, y = y, words_vectors = words_vectors))
+  for (j in 1:nrow(words_vectors)) {
+    class_weight[[j]] <- sum(y[,j])
+  }
+  
+  return(list(x = x, y = y, words_vectors = words_vectors, class_weight = class_weight))
 }

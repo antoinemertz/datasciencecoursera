@@ -26,6 +26,7 @@ ModelTrain <- function(train_file = "output.txt", output_file = "output_vectors.
   x <- train_data$x
   y <- train_data$y
   words_vectors <- train_data$words_vectors
+  class_weight <- train_data$class_weight
   
   cat("\n", "Create model...", "\n")
   model <- keras_model_sequential() %>% 
@@ -40,7 +41,7 @@ ModelTrain <- function(train_file = "output.txt", output_file = "output_vectors.
   )
   
   cat("Fit model...", "\n")
-  model %>% fit(x, y, batch_size = 128, epochs = 1)
+  model %>% fit(x, y, batch_size = 128, epochs = 1, class_weight = class_weight)
   
-  return(list(model = model, words_vectors = words_vectors, x = x, y = y, unique_words = unique_words))
+  return(list(model = model, words_vectors = words_vectors, x = x, y = y, unique_words = unique_words, class_weight))
 }
