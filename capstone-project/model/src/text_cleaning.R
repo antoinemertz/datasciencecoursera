@@ -1,6 +1,6 @@
 library(tm)
 
-CorpusCleaning <- function(docs) {
+CorpusCleaning <- function(docs, stop_words = TRUE) {
   # Remove hashtags
   removeHashtags <- function(x) {
     gsub("#[[:alnum:]]*", "", x)
@@ -13,7 +13,9 @@ CorpusCleaning <- function(docs) {
   # Remove numbers
   docs <- tm_map(docs, removeNumbers)
   # Remove english stop words
-  # docs <- tm_map(docs, removeWords, stopwords("english"))
+  if (stop_words) {
+    docs <- tm_map(docs, removeWords, stopwords("english"))
+  }
   # Remove punctuation
   docs <- tm_map(docs, removePunctuation)
   # Remove useless white spaces
